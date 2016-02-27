@@ -1,0 +1,103 @@
+
+<!doctype html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<title>Char fuzzer</title>
+		<style type="text/css">
+			body{
+				font: 15px/162% Arial,Helvetica,sans-serif;
+			}
+			input[type='text'],textarea{
+				border-style: solid;
+				border-color: #d2d3d4
+			}
+			#result{
+				width:60%;
+				height:300px;
+			}
+			#exp{
+				width:300px;
+				height:60px;
+			}
+			#count{
+				color:red;
+			}
+			button{
+				background-color:#151515;
+				color:white;
+			}
+		</style>
+		<script type="text/javascript" src="jquery-1.4.4.js"></script>
+		<script type="text/javascript" src="coffee-script.js"></script>
+		<!--[if lte IE 7]>
+		<script type="text/javascript" src="json2.js"></script>
+		<![endif]-->
+		<script type="text/coffeescript">
+		fuzzer = (exp,start,end,include,convert,types)->
+			push = switch convert
+					when "strify" then (x)->result.push(JSON.stringify(x))
+					when "numify" then (x)->result.push(x.charCodeAt(0))
+					else (x)->result.push(x)
+			result=[]
+			data = (String.fromCharCode(i) for i in [start..end])
+			for chr,i in data
+				try
+					Function(exp.replace(/:{chr}/g,chr).replace(/:{i}/g,i))()
+					type='Passed'
+				catch e
+					type=e.name;
+				finally
+					push(chr) if type in types^!include
+			result
+		$ ->
+			$('#go').click ->
+				exp = $('#exp').val()
+				start = $('#start_char').val()
+				end = $('#end_char').val()
+				include = parseInt $('input[name=include]:checked').val()
+				convert = $('input[name=convert]:checked').val()
+				#types = ($('#types option:selected').each ->types.push(this.text))
+				types =  (e.text for e in $('#types option:selected'))
+				result = fuzzer exp,start,end,include,convert,types
+				if result
+					$('#result').val ''
+					$('#result').val result.toString()
+					$('#count').html result.length
+					
+			$('#clear').click ->
+				$('#result').val ''
+				$('#count').html 0
+		</script>
+	</head>
+	<body>
+		<table>
+		<tr><td>Exp</td><td><textarea id="exp" autofocus>"\:{chr}00000000"</textarea></td></tr>
+		<tr><td>Type</td>
+			<td>
+				<select id="types" size="3" multiple>
+					<option selected="selected">Passed</option>
+					<option>ReferenceError</option>
+					<option>TypeError</option>
+					<option>SyntaxError</option>
+					<option>RangeError</option>
+					<option>EvalError</option>
+					<option>URIError</option>
+				</select>
+			</td>
+		</tr>
+		<tr><td>Start char</td><td><input id="start_char" type="text" value="0" size="5"/></td></tr>
+		<tr><td>End char</td><td><input id="end_char" type="text" value="65535" size="5"/></td></tr>
+		<tr><td>Include</td><td><input name="include" type="radio" value="1" checked="checked"/>Yes<input name="include" type="radio" value="0"/>No</td></tr>
+		<tr><td>Result Convert</td><td>
+			<input name="convert" type="radio" value="normal"/>Normal
+			<input name="convert" type="radio" value="strify" checked="checked"/>StrIfy
+			<input name="convert" type="radio" value="numify"/>NumIfy
+		</td></tr>
+		<tr><td>Count</td><td><span id="count">0</span></td></tr>
+		</table>
+		<div><textarea id="result" readOnly></textarea></div>
+		<button id="go">Fuzzing!</button>
+		<button id="clear">clear</button>
+	</body>
+</html>
